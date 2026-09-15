@@ -27,7 +27,7 @@ jobs:
           python -m pip install "git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref"
 
       - name: Validate Skill against the Agent Skills specification
-        run: skills-ref validate .
+        run: skills-ref validate "$PWD"
 
       - name: Compile Python scripts
         run: python -m py_compile scripts/dou_lint.py
