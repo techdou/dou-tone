@@ -4,6 +4,20 @@
 
 它不是通用问答 Skill，也不会仅因为内容涉及科研、项目、教学或文档就自动介入。纯事实问答、概念解释、资料检索、代码修改、忠实翻译、仅摘要或信息抽取，以及只生成文件格式而未要求文字改写时，不应使用 `dou-tone`。
 
+## 安装
+
+仓库根目录本身就是标准 Agent Skill 目录，clone 到宿主 Agent 的 skills 目录即可使用：
+
+```bash
+# 常见路径一：~/.agents/skills/（多宿主共享）
+git clone https://github.com/techdou/dou-tone.git ~/.agents/skills/dou-tone
+
+# 常见路径二：~/.claude/skills/（Claude Code）
+git clone https://github.com/techdou/dou-tone.git ~/.claude/skills/dou-tone
+```
+
+更新时在对应目录执行 `git pull` 即可。
+
 ## 适合处理
 
 - 工作总结、汇报、建设方案、申请与调研材料
@@ -109,7 +123,7 @@ Agent 默认只读取一个主场景文件；真正的混合任务最多再读�
 
 ## lint
 
-`dou_lint.py` 使用 FAIL / WARN 两级规则：FAIL 表示比较确定的语言问题，WARN 表示需要结合文体和上下文判断。
+`dou_lint.py` 使用 FAIL / WARN / STRUCT 三级规则：FAIL 表示比较确定的语言问题；WARN 表示需要结合文体和上下文判断；STRUCT 表示跨行的结构性“AI 味”（加粗前缀 + 冒号式段首、连续句子型 bullet、连续极简碎句），对应 `SKILL.md` 中“结构与排版规则（段落式写作）”一节。
 
 ```bash
 python scripts/dou_lint.py --self-test
