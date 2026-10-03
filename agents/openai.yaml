@@ -1,5 +1,5 @@
 interface:
   display_name: "Dou Tone"
-  short_description: "中文润色、改写与成稿规范；按用途适配正式、学术、项目、教学和个人文体"
+  short_description: "中文起草、润色与改写；保留事实和作者声音，按用途适配文体，减少空泛套话"
   brand_color: "#111111"
-  default_prompt: "使用 $dou-tone 润色或整理我提供的文字材料：先判断改写级别和真实用途，只加载必要的场景规则；保留事实、数字、引用、术语、责任主体和完成状态，默认直接输出可用成稿。"
+  default_prompt: "使用 $dou-tone 润色或整理我提供的材料，保留事实、术语、引用、完成状态与作者语气，按真实用途直接输出成稿。"

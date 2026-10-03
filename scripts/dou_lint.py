@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic lint checks for dou-tone Chinese writing.
-
-FAIL means the pattern is considered a confirmed writing problem in normal
-finished copy. WARN means the pattern needs contextual review and must not be
-removed mechanically.
-"""
+"""Advisory Chinese prose checks. Matches need context; they never prove a defect."""
 from __future__ import annotations
 
 import argparse
@@ -15,40 +10,42 @@ from pathlib import Path
 
 Rule = tuple[re.Pattern[str], str]
 
-FAIL_RULES: tuple[Rule, ...] = (
-    (re.compile(r"先保哪一个|保(?:重点|逻辑|意思|准确|清楚|自然|风格|质量|结构)"), "使用“遵循、保留、确保”等准确动词。"),
-    (re.compile(r"(?:一个|这个)?(?:代码)?问题.{0,8}怎么走"), "改成能够说明真实处理过程的表达。"),
-    (re.compile(r"(?:线索|结果|结论|内容).{0,8}(?:带回来|丢回来|交回来)"), "写清楚谁说明、提交或返回了什么。"),
-    (re.compile(r"(?:先)?把(?:事实|证据).{0,8}(?:找出来|建立(?:起来)?)"), "改成查看、检查、确认等具体动作。"),
-    (re.compile(r"(?:逻辑|流程).{0,6}跑(?:到|下去)"), "使用“执行”或具体说明调用关系。"),
-    (re.compile(r"(?:问题|流程|事情|能力|价值).{0,6}落(?:下去|到|地)"), "说明具体实现、应用或处理动作。"),
-    (re.compile(r"(?:吃下|吞下).{0,10}(?:对话|内容|信息|上下文)"), "改用读取、接收、包含等准确动词。"),
-    (re.compile(r"(?:把)?(?:内容|信息|上下文).{0,8}(?:塞进|塞到|喂给)"), "改用写入、添加、提供等准确动词。"),
-    (re.compile(r"跑测试"), "使用“运行测试”。"),
-    (re.compile(r"(?:搞|弄)(?:顺|清楚|明白|好|完|懂|定|起来|下去)"), "说明具体动作和结果，不使用含义含糊的动作词。"),
-    (re.compile(r"承接(?:需求|任务|工作|内容)"), "说明具体是处理、负责、实现还是接收。"),
-    (re.compile(r"(?:赋能|撬动|抓手|闭环|沉淀价值|价值落地)"), "删除宣传黑话，直接说明具体作用。"),
-    (re.compile(r"原因很简单[：:，,。]?"), "删除模板化领起语，直接说明具体原因。"),
-    (re.compile(r"(?:真正重要的是|真正的关键是|这不仅仅?是|从更大的角度看)"), "删除没有增加信息的总结或升华表达。"),
-    (re.compile(r"任务.{0,12}停在[“\"]?代码已经写出来"), "直接说明代码完成后还需要执行哪些检查。"),
-    (re.compile(r"(?:当然可以|希望这对(?:你|您)有帮助|如需更多(?:信息|帮助).{0,8}(?:请)?(?:随时)?(?:告诉我|联系我))"), "删除成稿中的聊天残留。"),
-)
-
-WARN_RULES: tuple[Rule, ...] = (
-    (re.compile(r"(?:在当今|在当前).{0,18}(?:时代|背景|环境)下"), "确认背景是否提供必要信息，否则直接进入具体内容。"),
-    (re.compile(r"随着.{0,18}(?:不断|持续)(?:发展|演变|变化)"), "确认变化是否与后文存在具体关系。"),
-    (re.compile(r"(?:值得注意的是|需要指出的是|毋庸置疑|不可否认的是?)"), "确认领起语是否承担真实限定或转折。"),
-    (re.compile(r"(?:标志着|代表着).{0,24}(?:重要|关键)(?:一步|时刻|转折点)"), "改为材料已经确认的动作、变化或结果。"),
-    (re.compile(r"为.{1,24}奠定(?:了)?(?:坚实的?)?基础"), "说明具体产生了什么后续条件或结果。"),
-    (re.compile(r"(?:彰显|凸显|体现)(?:了)?.{0,20}(?:重要性|意义|价值)"), "确认重要性判断是否有材料支持。"),
-    (re.compile(r"(?:业内|行业|专家|观察者)(?:普遍)?(?:认为|指出|表示)"), "给出明确来源；没有来源时删除模糊归因。"),
-    (re.compile(r"(?:很多|不少|部分)用户(?:认为|指出|表示|反馈)"), "确认用户反馈是否有明确材料依据。"),
-    (re.compile(r"(?:有|相关|多项|大量)研究(?:均)?(?:表明|显示|指出)"), "学术文本需要明确来源；其他文本避免模糊权威背书。"),
-    (re.compile(r"(?:从而确保|进而体现|进一步彰显|反映了更深层次)"), "确认尾句是否有真实因果或材料依据。"),
-    (re.compile(r"尽管.{0,24}(?:挑战|困难).{0,24}(?:仍|依然|未来)"), "直接说明已经确认的限制、结果或后续安排。"),
-    (re.compile(r"(?:未来可期|迈出(?:了)?(?:至关重要|重要|关键)的一步|开启(?:了)?(?:全新|新的?)篇章)"), "删除通用乐观结尾，改写为具体结果或安排。"),
-    (re.compile(r"(?:这是一个(?:非常|很)?好的问题|你说得(?:完全)?正确)"), "成稿中删除聊天式回应；对话回复中结合上下文判断。"),
-    (re.compile(r"(?:可能|或许|也许|在一定程度上|在某种程度上).{0,8}(?:可能|或许|也许|在一定程度上|在某种程度上)"), "合并重复限定，保留一个符合事实状态的说法。"),
+# Avoid single-word bans: legitimate wording and technical terms need context.
+WARN_RULES: tuple[Rule, ...] = tuple(
+    (re.compile(pattern), message) for pattern, message in (
+        (r"(?:在当今|在当前).{0,18}(?:时代|背景|环境)下",
+         "背景是否有助于理解后文？有具体条件时保留，空泛铺垫再删。"),
+        (r"随着.{0,18}(?:不断|持续)(?:发展|演变|变化)",
+         "这项变化与后文有什么具体关系？已有关系时无需删除。"),
+        (r"(?:值得注意的是|需要指出的是|毋庸置疑|不可否认的是?)",
+         "领起语是否承担真实提醒、限定或转折？不要仅凭措辞替换。"),
+        (r"(?:标志着|代表着).{0,24}(?:重要|关键)(?:一步|时刻|转折点)",
+         "该判断是否有材料支持？保留有依据的评价，空泛时说明具体变化。"),
+        (r"为.{1,24}奠定(?:了)?(?:坚实的?)?基础",
+         "是否交代了具体后续条件？有实际含义时保留。"),
+        (r"(?:彰显|凸显|体现)(?:了)?.{0,20}(?:重要性|意义|价值)",
+         "评价是否增加信息并有依据？不要补造效果来替换。"),
+        (r"(?:业内|行业|专家|观察者)(?:普遍)?(?:认为|指出|表示)",
+         "附近是否有明确来源或归因？不能自行编造权威背书。"),
+        (r"(?:很多|不少|部分)用户(?:认为|指出|表示|反馈)",
+         "反馈是否来自所提供的材料？有证据时保留原归因与范围。"),
+        (r"(?:有|相关|多项|大量)研究(?:均)?(?:表明|显示|指出)",
+         "检查附近引文或已知来源；真实引用不因命中而删去。"),
+        (r"(?:从而确保|进而体现|进一步彰显|反映了更深层次)",
+         "因果或解释是否有材料支持？语义成立时保留。"),
+        (r"尽管.{0,24}(?:挑战|困难).{0,24}(?:仍|依然|未来)",
+         "是否写清实际困难和后续安排？真实转折与计划可以保留。"),
+        (r"(?:未来可期|迈出(?:了)?(?:至关重要|重要|关键)的一步|开启(?:了)?(?:全新|新的?)篇章)",
+         "结尾是否提供新信息或作者有依据的判断？无需强加总结。"),
+        (r"(?:当然可以|这是一个(?:非常|很)?好的问题|你说得(?:完全)?正确|希望这对(?:你|您)有帮助|如需更多(?:信息|帮助).{0,8}(?:请)?(?:随时)?(?:告诉我|联系我))",
+         "是否属于独立成稿中的聊天包装？邮件、引语与真实对话按用途保留。"),
+        (r"(?:可能|或许|也许|在一定程度上|在某种程度上).{0,8}(?:可能|或许|也许|在一定程度上|在某种程度上)",
+         "限定是否重复修饰同一判断？不同条件或对象不能一并删去。"),
+        (r"(?:全面赋能|打造(?:全新)?生态|沉淀价值|形成强大合力)",
+         "是否有具体对象、动作与作用？保留必要术语，空泛时回到材料。"),
+        (r"(?:原因很简单[：:]|真正重要的是|真正的关键是|从更大的角度看)",
+         "后文是否增加必要原因或判断？不要把有内容的引导句当作禁语。"),
+    )
 )
 
 
@@ -57,286 +54,214 @@ def read_text(name: str) -> str:
         return sys.stdin.read()
     try:
         return Path(name).read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise ValueError(f"file not found: {name}") from exc
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"file is not valid UTF-8: {name}") from exc
-    except OSError as exc:
-        raise ValueError(f"cannot read {name}: {exc}") from exc
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(f"cannot read UTF-8 file {name}: {exc}") from exc
 
 
 def visible_lines(text: str) -> list[tuple[int, str]]:
-    """Return visible prose while skipping fenced code and script/style blocks."""
+    """Lightweight prose extraction, preserving source line numbers, not a parser."""
+    raw_lines = text.splitlines()
+    start = 0
+    if raw_lines and raw_lines[0].strip() == "---":
+        for index in range(1, len(raw_lines)):
+            if raw_lines[index].strip() in ("---", "..."):
+                start = index + 1
+                break
+    fence_char = ""
+    fence_length = 0
+    prose: list[str] = []
+    for number, raw in enumerate(raw_lines, start=1):
+        if number <= start:
+            prose.append("")
+            continue
+        if fence_char:
+            if re.fullmatch(r" {0,3}" + re.escape(fence_char) + "{" +
+                            str(fence_length) + r",}\s*", raw):
+                fence_char = ""
+            prose.append("")
+            continue
+        opener = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", raw)
+        if opener and not (opener[1][0] == "`" and "`" in opener[2]):
+            fence_char, fence_length = opener[1][0], len(opener[1])
+            prose.append("")
+            continue
+        prose.append(re.sub(r"(`+).*?\1", " ", raw))
+    # Protect code before interpreting HTML-like strings as markup.
+    hidden = re.compile(
+        r"<!--.*?(?:-->|$)|<(script|style)\b[^>]*>.*?(?:</\1\s*>|$)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    visible = hidden.sub(lambda match: "\n" * match.group().count("\n"),
+                         "\n".join(prose))
     lines: list[tuple[int, str]] = []
-    in_fence = False
-    in_script = False
-    for number, raw in enumerate(text.splitlines(), start=1):
-        stripped = raw.strip()
-        if stripped.startswith("```"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        if re.search(r"<(script|style)\b", raw, flags=re.IGNORECASE):
-            in_script = True
-        if in_script:
-            if re.search(r"</(script|style)>", raw, flags=re.IGNORECASE):
-                in_script = False
-            continue
+    for number, raw in enumerate(visible.splitlines(), start=1):
         clean = re.sub(r"<[^>]+>", " ", raw)
-        clean = re.sub(r"`[^`]*`", " ", clean)
         clean = html.unescape(re.sub(r"\s+", " ", clean)).strip()
         if clean:
             lines.append((number, clean))
     return lines
 
 
-def scan(text: str, rules: tuple[Rule, ...]) -> list[tuple[int, str, str]]:
-    out: list[tuple[int, str, str]] = []
-    for line_no, line in visible_lines(text):
-        for pattern, message in rules:
-            if pattern.search(line):
-                out.append((line_no, line, message))
-    return out
+def scan(text: str, rules: tuple[Rule, ...] = WARN_RULES) -> list[tuple[int, str, str]]:
+    return [
+        (number, line, message)
+        for number, line in visible_lines(text)
+        for pattern, message in rules
+        if pattern.search(line)
+    ]
 
 
-# ───────────────────────── 结构级检查（跨行） ─────────────────────────
-
-BULLET_RE = re.compile(r"^(?:[-*•·]|\d{1,2}[.、)])\s*")
-BOLD_COLON_RE = re.compile(r"\*\*[^*\n]{0,40}[:：]\s*\*\*|\*\*[^*\n]{1,40}\*\*\s*[:：]")
-SENT_SPLIT_RE = re.compile(r"[。！？]")
+# Heuristics locate passages to review; these thresholds are not writing quotas.
+BULLET_RE = re.compile(r"^(?:[-*+•·]|\d{1,3}[.、)])\s+")
+BOLD_COLON_RE = re.compile(r"^\*\*[^*\n]{1,40}(?:[:：]\s*\*\*|\*\*\s*[:：])")
+NON_PROSE_RE = re.compile(r"^(?:#{1,6}\s|[|>])")
 
 
 def structural_checks(text: str) -> list[tuple[int, str, str]]:
-    """跨行结构检查：加粗冒号段首、连续句子型 bullet、连续极简碎句。"""
-    out: list[tuple[int, str, str]] = []
+    """Find structural hints without joining unrelated blocks or rewriting text."""
     lines = visible_lines(text)
+    out: list[tuple[int, str, str]] = []
+    for number, line in lines:
+        if BOLD_COLON_RE.match(line):
+            out.append((number, line,
+                        "加粗冒号段首是否只在包装要点？字段、定义与指定格式可以保留。"))
 
-    # 1) 加粗前缀 + 冒号 的段首（AI 式 lead-in）
-    for line_no, line in lines:
-        m = BOLD_COLON_RE.search(line)
-        if m:
-            out.append(
-                (
-                    line_no,
-                    line,
-                    "STRUCT  加粗前缀 + 冒号式段首：把要点写进完整句子，如“第一个创新点是……，它的价值在于……”",
-                )
-            )
-
-    # 2) 连续句子型 bullet（≥4 条连续列表行，且每条本身接近完整句子）
     run: list[tuple[int, str]] = []
-    def flush_bullet_run(run_: list[tuple[int, str]]):
-        if len(run_) >= 4:
-            sample = run_[0][1][:40]
-            out.append(
-                (
-                    run_[0][0],
-                    sample,
-                    f"STRUCT  连续 {len(run_)} 条句子型 bullet：论述性内容应合并为自然段（每段 3–6 句，句间用因果或递进衔接）",
-                )
-            )
-    for line_no, line in lines:
-        if BULLET_RE.match(line) and len(line) >= 12:
-            run.append((line_no, line))
-        else:
-            flush_bullet_run(run)
-            run = []
-    flush_bullet_run(run)
 
-    # 3) 连续极简碎句：正文句流中连续 ≥3 句每句不足 15 字（跳过列表行与标题行）
-    prose = []
-    for line_no, line in lines:
-        if BULLET_RE.match(line):
-            continue
-        prose.append((line_no, line))
-    joined = " ".join(l for _, l in prose)
-    pos = 0
-    sentences: list[tuple[int, str]] = []
-    # 记录每个句子大致出现的行号（按累计字符数映射）
-    line_spans: list[tuple[int, int, int]] = []
-    offset = 0
-    for line_no, line in prose:
-        line_spans.append((offset, offset + len(line), line_no))
-        offset += len(line) + 1
-    for m in SENT_SPLIT_RE.finditer(joined):
-        sentences.append((joined[pos:m.start() + 1], m.start()))
-        pos = m.end()
-    if pos < len(joined):
-        sentences.append((joined[pos:], len(joined)))
-    run_short: list[tuple[int, str]] = []
-    def line_of(char_idx: int) -> int:
-        for start, end, line_no in line_spans:
-            if start <= char_idx <= end:
-                return line_no
-        return line_spans[-1][2] if line_spans else 0
-    def flush_short(run_: list[tuple[int, str]]):
-        if len(run_) >= 3:
-            out.append(
-                (
-                    run_[0][0],
-                    " ".join(t for _, t in run_)[:50],
-                    "STRUCT  连续极简碎句：用连词、定语或原因状语把相关短句组织成有层次的长句",
-                )
-            )
-    # 线性扫描句子，统计连续短句
-    run_short = []
-    sent_spans = []
-    search_from = 0
-    for raw_sent in re.split(r"(?<=[。！？])", joined):
-        if not raw_sent.strip():
-            continue
-        st = joined.find(raw_sent.strip()[:6], search_from)
-        if st < 0:
-            st = search_from
-        en = st + len(raw_sent)
-        search_from = en
-        sent_spans.append((st, en, raw_sent.strip()))
-    for st, en, sent in sent_spans:
-        body = sent.rstrip("。！？")
-        if len(body) < 15 and len(body) > 0:
-            ln = line_of(st)
-            run_short.append((ln, sent))
+    def flush_bullets() -> None:
+        if len(run) >= 4:
+            out.append((run[0][0], run[0][1][:60],
+                        f"连续 {len(run)} 条长列表项：检查是否属于连贯论述；"
+                        "独立并列信息、步骤、规格和用户指定列表可以保留。"))
+        run.clear()
+
+    for number, line in lines:
+        bullet = BULLET_RE.match(line)
+        if bullet and len(line[bullet.end():]) >= 12:
+            if run and number != run[-1][0] + 1:
+                flush_bullets()
+            run.append((number, line))
         else:
-            flush_short(run_short)
-            run_short = []
-    flush_short(run_short)
+            flush_bullets()
+    flush_bullets()
+
+    paragraph: list[tuple[int, str]] = []
+
+    def flush_paragraph() -> None:
+        if not paragraph:
+            return
+        joined = "\n".join(line for _, line in paragraph)
+        short: list[tuple[int, str]] = []
+
+        def flush_short() -> None:
+            if len(short) >= 3:
+                out.append((short[0][0], " ".join(s for _, s in short)[:60],
+                            "同段连续短句：检查是否缺少句间关系；"
+                            "有意节奏和独立判断可以保留，不为合并补造因果。"))
+            short.clear()
+
+        for match in re.finditer(r"[^。！？]*[。！？]", joined):
+            sentence = match[0].strip()
+            body = re.sub(r"\s+", "", sentence[:-1])
+            if 0 < len(body) < 15:
+                offset = match.start() + len(match[0]) - len(match[0].lstrip())
+                number = paragraph[joined[:offset].count("\n")][0]
+                short.append((number, sentence))
+            else:
+                flush_short()
+        flush_short()
+        paragraph.clear()
+
+    for number, line in lines:
+        if BULLET_RE.match(line) or NON_PROSE_RE.match(line):
+            flush_paragraph()
+            continue
+        if paragraph and number != paragraph[-1][0] + 1:
+            flush_paragraph()
+        paragraph.append((number, line))
+    flush_paragraph()
     return out
 
 
 def self_test() -> int:
-    bad = "\n".join(
-        (
-            "模型不知道先保哪一个。",
-            "一个代码问题平时可以怎么走。",
-            "Explorer 把线索带回来。",
-            "先把事实找出来。",
-            "这个流程怎么跑下去。",
-            "让这个能力落下去。",
-            "子 Agent 直接吃下整段上下文。",
-            "把内容塞进提示词。",
-            "让模型跑测试。",
-            "先把这段流程搞顺。",
-            "这个功能负责承接需求。",
-            "这套方案可以赋能开发团队。",
-            "原因很简单：它读取了错误的文件。",
-            "真正重要的是，我们理解了工具的边界。",
-            "任务不必停在“代码已经写出来”。",
-            "当然可以，以下是修改后的正文。",
-        )
+    # Verify boundaries and scanning behavior, not linguistic quality.
+    tick = chr(96)
+    natural = "\n".join((
+        "我先搞清楚报错，再跑测试；修好后就告诉你。",
+        "把事实找出来，才能判断这个问题怎么处理。",
+        "控制器通过闭环反馈调整输出。",
+        "王某等人的研究表明，结果仅适用于该样本[1]。",
+        "这项政策可能影响结果，效果尚未测试。",
+    ))
+    protected = (
+        "---\ntitle: 全面赋能\n---\n"
+        f"{tick*4}markdown\n{tick*3}\n全面赋能\n{tick*3}\n{tick*4}\n"
+        "~~~text\n全面赋能\n~~~\n"
+        "<!-- 全面赋能 -->\n"
+        "<script>全面赋能</script><p>普通正文</p>\n"
+        "<style>\n全面赋能\n</style>\n"
+        f"使用 {tick}全面赋能{tick} 作为示例字符串。\n"
+        f"使用 {tick*2}包含 {tick}全面赋能{tick} 的示例{tick*2}。\n"
+        "普通正文\n全面赋能开发团队。\n"
     )
-    good = "\n".join(
-        (
-            "模型必须先遵循事实准确这项要求。",
-            "一个代码问题通常按调用关系定位。",
-            "Explorer 说明查到的调用和配置。",
-            "查看调用和配置，确认当前实现。",
-            "这个流程由主 Agent 继续执行。",
-            "实现这项能力。",
-            "子 Agent 读取与任务有关的对话。",
-            "把内容写入提示词。",
-            "让模型运行测试。",
-            "这个功能负责处理需求。",
-            "产品支持批量处理和离线模式。",
-        )
-    )
-    warn_bad = "\n".join(
-        (
-            "在当前复杂环境下，团队需要保持敏捷。",
-            "随着人工智能技术的不断发展，工具越来越多。",
-            "值得注意的是，这项功能已经发布。",
-            "这标志着产品迈出了重要一步。",
-            "这次更新为后续增长奠定了坚实的基础。",
-            "这体现了自动化的重要性。",
-            "业内普遍认为，这种方案更可靠。",
-            "不少用户反馈，新的设计更自然。",
-            "有研究表明，这种方法可以提高效率。",
-            "这项改动进一步彰显了产品价值。",
-            "尽管面临诸多挑战，团队未来仍将继续前进。",
-            "产品完成升级，未来可期。",
-            "这是一个很好的问题。",
-            "这项政策可能在一定程度上或许会影响结果。",
-        )
-    )
-    warning_good = "\n".join(
-        (
-            "2026 年 9 月接口升级后，旧版客户端无法继续登录。",
-            "清华大学发布的报告显示，样本中的响应时间缩短了 12%。",
-            "这项政策可能影响结果。",
-        )
-    )
-    # 结构级检查样例：加粗冒号段首、连续句子型 bullet、连续极简碎句
-    struct_bad = "\n".join(
-        (
-            "**创新点一：**本作品实现了浏览器内的真 VR 漫游。",
-            "- 传统全景展厅只能固定机位观看，交互自由度很低",
-            "- 图文 H5 展览以滚动和翻页呈现，内容形态只有图片和文字",
-            "- 常见的预制音频讲解无法随问随答，更不能结合画面分析",
-            "- 部分展厅还需要安装插件，访问门槛偏高，体验不够流畅",
-            "这是第一句很短。",
-            "这是第二句也短。",
-            "第三句依旧很短。",
-            "这里是一句更长的句子，它包含定语和原因状语，所以不会被判定为碎句，满足合并后的长度要求。",
-        )
-    )
-    struct_good = "\n".join(
-        (
-            "第一个创新点是浏览器内的真 VR 漫游：它基于 WebXR 标准实现，而不是常见的全景图拼接。",
-            "这个方案的价值在于让头显用户获得真正的空间感，同时同一套代码仍然覆盖桌面与移动端。",
-            "团队的第二个考虑是交互自由度，因此实现了自由行走、双相机模式和地面瞬移。",
-        )
-    )
-    failures = scan(bad, FAIL_RULES)
-    warnings = scan(warn_bad, WARN_RULES)
-    failure_lines = {line_number for line_number, _, _ in failures}
-    warning_lines = {line_number for line_number, _, _ in warnings}
-    struct_bad_results = structural_checks(struct_bad)
-    struct_good_results = structural_checks(struct_good)
-    struct_ok = (
-        len(struct_bad_results) >= 3
-        and len(struct_good_results) == 0
-    )
-    ok = (
-        failure_lines == set(range(1, len(bad.splitlines()) + 1))
-        and not scan(good, FAIL_RULES)
-        and not scan(good, WARN_RULES)
-        and warning_lines == set(range(1, len(warn_bad.splitlines()) + 1))
-        and not scan(warning_good, WARN_RULES)
-        and struct_ok
-    )
-    print("PASS  dou-tone lint self-test" if ok else "FAIL  dou-tone lint self-test")
-    if not ok:
-        for item in failures:
-            print(f"      FAIL sample: {item}")
-        for item in warnings:
-            print(f"      WARN sample: {item}")
-        if not struct_ok:
-            print(f"      STRUCT bad-sample results ({len(struct_bad_results)}):")
-            for line_no, line, message in struct_bad_results:
-                print(f"        {line_no}: {message}")
-            print(f"      STRUCT good-sample results: {len(struct_good_results)}")
-    return 0 if ok else 1
+    checks = {
+        "natural wording and technical terms": not scan(natural),
+        "review-worthy wording is reported": bool(scan("相关研究表明，产品未来可期。")),
+        "protected regions and line numbers": [n for n, _, _ in scan(protected)] == [20],
+        "prose after an HTML block stays visible": bool(
+            scan("<script>ignored</script><p>全面赋能</p>")),
+        "short fences do not close long fences": not scan(
+            f"{tick*4}\n{tick*3}\n全面赋能\n{tick*3}\n{tick*4}"),
+        "longer closing fences work": bool(scan("~~~\nignored\n~~~~\n全面赋能")),
+        "unclosed code is protected": not scan(f"{tick*3}\n全面赋能"),
+        "HTML examples in fences cannot hide following prose": bool(scan(
+            f"{tick*3}html\n<script>\n{tick*3}\n全面赋能")),
+        "inline HTML examples cannot hide following prose": bool(scan(
+            f"使用 {tick}<script>{tick} 标签。\n全面赋能")),
+        "structural hints are reported": len(structural_checks(
+            "**方案：**说明内容。\n"
+            "- 首先检查材料中的日期和负责人信息。\n"
+            "- 然后核对正文中的数字与引用来源。\n"
+            "- 再次查看各项工作的计划和完成状态。\n"
+            "- 最后保留与材料一致的原有段落结构。\n"
+            "先看输入。\n再查日志。\n最后复核。")) == 3,
+        "short sentences do not cross paragraph boundaries": not structural_checks(
+            "先看输入。\n\n再查日志。\n\n最后复核。"),
+        "headings break short-sentence runs": not structural_checks(
+            "先看输入。\n## 检查\n再查日志。\n## 复核\n最后复核。"),
+        "code examples do not trigger structural hints": not structural_checks(
+            f"{tick*3}\n**字段：**示例。\n先看输入。再查日志。最后复核。\n{tick*3}"),
+        "bold text inside a paragraph is not a paragraph lead": not structural_checks(
+            "需要核对 **字段：** 的名称，但不能根据格式推断文本质量。"),
+        "separated lists are not one run": not structural_checks(
+            "- 首先检查材料中的日期和负责人信息。\n"
+            "- 然后核对正文中的数字与引用来源。\n\n"
+            "- 再次查看各项工作的计划和完成状态。\n"
+            "- 最后保留与材料一致的原有段落结构。"),
+        "short-sentence locations retain source lines": any(
+            number == 3 for number, _, _ in structural_checks(
+                "# 标题\n\n先看输入。\n再查日志。\n最后复核。")),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        print("FAIL  dou-tone lint self-test: " + ", ".join(failed))
+        return 1
+    print(f"PASS  dou-tone lint self-test ({len(checks)} boundary checks)")
+    return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Check UTF-8 text for known dou-tone writing issues.")
-    parser.add_argument("files", nargs="*", help="UTF-8 files to scan, or - for stdin")
-    parser.add_argument("--self-test", action="store_true", help="run deterministic rule self-tests")
-    parser.add_argument(
-        "--fail-on-warn",
-        action="store_true",
-        help="return a non-zero status when contextual warnings are found",
-    )
+    parser = argparse.ArgumentParser(description="Find Chinese prose worth contextual review.")
+    parser.add_argument("files", nargs="*", help="UTF-8 files, or - for stdin")
+    parser.add_argument("--self-test", action="store_true", help="check scanning boundaries")
+    parser.add_argument("--fail-on-warn", action="store_true",
+                        help="explicitly return 1 on a warning; not a quality verdict")
     args = parser.parse_args()
-
     if args.self_test:
         return self_test()
     if not args.files:
-        parser.error("provide one or more UTF-8 files, or use --self-test")
-
-    failed = False
-    warned = False
-    read_error = False
+        parser.error("provide UTF-8 files, stdin (-), or --self-test")
+    warned = read_error = False
     for name in args.files:
         try:
             text = read_text(name)
@@ -344,25 +269,17 @@ def main() -> int:
             print(f"ERROR {exc}", file=sys.stderr)
             read_error = True
             continue
-        for line_no, line, message in scan(text, FAIL_RULES):
-            print(f"FAIL  {name}:{line_no}: {line}\n      {message}")
-            failed = True
-        for line_no, line, message in scan(text, WARN_RULES):
-            print(f"WARN  {name}:{line_no}: {line}\n      {message}")
+        for number, line, message in scan(text):
+            print(f"WARN  {name}:{number}: {line}\n      {message}")
             warned = True
-        for line_no, line, message in structural_checks(text):
-            print(f"STRUCT {name}:{line_no}: {line}\n      {message}")
+        for number, line, message in structural_checks(text):
+            print(f"STRUCT {name}:{number}: {line}\n      {message}")
             warned = True
-
     if read_error:
         return 2
-    if not failed and not warned:
-        print("PASS  no known dou-tone issues")
-    elif not failed:
-        print("PASS  no confirmed failures; review warnings")
-    if failed or (warned and args.fail_on_warn):
-        return 1
-    return 0
+    if not warned:
+        print("INFO  no known patterns found; full contextual review is still needed")
+    return 1 if warned and args.fail_on_warn else 0
 
 
 if __name__ == "__main__":
