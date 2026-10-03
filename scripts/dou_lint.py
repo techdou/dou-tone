@@ -100,6 +100,110 @@ def scan(text: str, rules: tuple[Rule, ...]) -> list[tuple[int, str, str]]:
     return out
 
 
+# ───────────────────────── 结构级检查（跨行） ─────────────────────────
+
+BULLET_RE = re.compile(r"^(?:[-*•·]|\d{1,2}[.、)])\s*")
+BOLD_COLON_RE = re.compile(r"\*\*[^*\n]{0,40}[:：]\s*\*\*|\*\*[^*\n]{1,40}\*\*\s*[:：]")
+SENT_SPLIT_RE = re.compile(r"[。！？]")
+
+
+def structural_checks(text: str) -> list[tuple[int, str, str]]:
+    """跨行结构检查：加粗冒号段首、连续句子型 bullet、连续极简碎句。"""
+    out: list[tuple[int, str, str]] = []
+    lines = visible_lines(text)
+
+    # 1) 加粗前缀 + 冒号 的段首（AI 式 lead-in）
+    for line_no, line in lines:
+        m = BOLD_COLON_RE.search(line)
+        if m:
+            out.append(
+                (
+                    line_no,
+                    line,
+                    "STRUCT  加粗前缀 + 冒号式段首：把要点写进完整句子，如“第一个创新点是……，它的价值在于……”",
+                )
+            )
+
+    # 2) 连续句子型 bullet（≥4 条连续列表行，且每条本身接近完整句子）
+    run: list[tuple[int, str]] = []
+    def flush_bullet_run(run_: list[tuple[int, str]]):
+        if len(run_) >= 4:
+            sample = run_[0][1][:40]
+            out.append(
+                (
+                    run_[0][0],
+                    sample,
+                    f"STRUCT  连续 {len(run_)} 条句子型 bullet：论述性内容应合并为自然段（每段 3–6 句，句间用因果或递进衔接）",
+                )
+            )
+    for line_no, line in lines:
+        if BULLET_RE.match(line) and len(line) >= 12:
+            run.append((line_no, line))
+        else:
+            flush_bullet_run(run)
+            run = []
+    flush_bullet_run(run)
+
+    # 3) 连续极简碎句：正文句流中连续 ≥3 句每句不足 15 字（跳过列表行与标题行）
+    prose = []
+    for line_no, line in lines:
+        if BULLET_RE.match(line):
+            continue
+        prose.append((line_no, line))
+    joined = " ".join(l for _, l in prose)
+    pos = 0
+    sentences: list[tuple[int, str]] = []
+    # 记录每个句子大致出现的行号（按累计字符数映射）
+    line_spans: list[tuple[int, int, int]] = []
+    offset = 0
+    for line_no, line in prose:
+        line_spans.append((offset, offset + len(line), line_no))
+        offset += len(line) + 1
+    for m in SENT_SPLIT_RE.finditer(joined):
+        sentences.append((joined[pos:m.start() + 1], m.start()))
+        pos = m.end()
+    if pos < len(joined):
+        sentences.append((joined[pos:], len(joined)))
+    run_short: list[tuple[int, str]] = []
+    def line_of(char_idx: int) -> int:
+        for start, end, line_no in line_spans:
+            if start <= char_idx <= end:
+                return line_no
+        return line_spans[-1][2] if line_spans else 0
+    def flush_short(run_: list[tuple[int, str]]):
+        if len(run_) >= 3:
+            out.append(
+                (
+                    run_[0][0],
+                    " ".join(t for _, t in run_)[:50],
+                    "STRUCT  连续极简碎句：用连词、定语或原因状语把相关短句组织成有层次的长句",
+                )
+            )
+    # 线性扫描句子，统计连续短句
+    run_short = []
+    sent_spans = []
+    search_from = 0
+    for raw_sent in re.split(r"(?<=[。！？])", joined):
+        if not raw_sent.strip():
+            continue
+        st = joined.find(raw_sent.strip()[:6], search_from)
+        if st < 0:
+            st = search_from
+        en = st + len(raw_sent)
+        search_from = en
+        sent_spans.append((st, en, raw_sent.strip()))
+    for st, en, sent in sent_spans:
+        body = sent.rstrip("。！？")
+        if len(body) < 15 and len(body) > 0:
+            ln = line_of(st)
+            run_short.append((ln, sent))
+        else:
+            flush_short(run_short)
+            run_short = []
+    flush_short(run_short)
+    return out
+
+
 def self_test() -> int:
     bad = "\n".join(
         (
@@ -161,16 +265,44 @@ def self_test() -> int:
             "这项政策可能影响结果。",
         )
     )
+    # 结构级检查样例：加粗冒号段首、连续句子型 bullet、连续极简碎句
+    struct_bad = "\n".join(
+        (
+            "**创新点一：**本作品实现了浏览器内的真 VR 漫游。",
+            "- 传统全景展厅只能固定机位观看，交互自由度很低",
+            "- 图文 H5 展览以滚动和翻页呈现，内容形态只有图片和文字",
+            "- 常见的预制音频讲解无法随问随答，更不能结合画面分析",
+            "- 部分展厅还需要安装插件，访问门槛偏高，体验不够流畅",
+            "这是第一句很短。",
+            "这是第二句也短。",
+            "第三句依旧很短。",
+            "这里是一句更长的句子，它包含定语和原因状语，所以不会被判定为碎句，满足合并后的长度要求。",
+        )
+    )
+    struct_good = "\n".join(
+        (
+            "第一个创新点是浏览器内的真 VR 漫游：它基于 WebXR 标准实现，而不是常见的全景图拼接。",
+            "这个方案的价值在于让头显用户获得真正的空间感，同时同一套代码仍然覆盖桌面与移动端。",
+            "团队的第二个考虑是交互自由度，因此实现了自由行走、双相机模式和地面瞬移。",
+        )
+    )
     failures = scan(bad, FAIL_RULES)
     warnings = scan(warn_bad, WARN_RULES)
     failure_lines = {line_number for line_number, _, _ in failures}
     warning_lines = {line_number for line_number, _, _ in warnings}
+    struct_bad_results = structural_checks(struct_bad)
+    struct_good_results = structural_checks(struct_good)
+    struct_ok = (
+        len(struct_bad_results) >= 3
+        and len(struct_good_results) == 0
+    )
     ok = (
         failure_lines == set(range(1, len(bad.splitlines()) + 1))
         and not scan(good, FAIL_RULES)
         and not scan(good, WARN_RULES)
         and warning_lines == set(range(1, len(warn_bad.splitlines()) + 1))
         and not scan(warning_good, WARN_RULES)
+        and struct_ok
     )
     print("PASS  dou-tone lint self-test" if ok else "FAIL  dou-tone lint self-test")
     if not ok:
@@ -178,6 +310,11 @@ def self_test() -> int:
             print(f"      FAIL sample: {item}")
         for item in warnings:
             print(f"      WARN sample: {item}")
+        if not struct_ok:
+            print(f"      STRUCT bad-sample results ({len(struct_bad_results)}):")
+            for line_no, line, message in struct_bad_results:
+                print(f"        {line_no}: {message}")
+            print(f"      STRUCT good-sample results: {len(struct_good_results)}")
     return 0 if ok else 1
 
 
@@ -212,6 +349,9 @@ def main() -> int:
             failed = True
         for line_no, line, message in scan(text, WARN_RULES):
             print(f"WARN  {name}:{line_no}: {line}\n      {message}")
+            warned = True
+        for line_no, line, message in structural_checks(text):
+            print(f"STRUCT {name}:{line_no}: {line}\n      {message}")
             warned = True
 
     if read_error:
