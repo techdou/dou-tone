@@ -45,6 +45,8 @@ git clone https://github.com/techdou/dou-tone.git ~/.claude/skills/dou-tone
 
 主场景与辅助参考只按实际需要组合。Humanizer 的编辑经验沉淀在本技能内，不另设重复入口。
 
+[Humanizer 模式参考](references/humanizer-patterns.md) 合并中英文目录中的对应项，覆盖 32 类问题及保留边界；由编辑经验参考按具体问题引导查阅，不默认增加加载量。
+
 ## 可选检查
 
 检查脚本只提供上下文复核提示，不自动改文，不把自然口语判为失败，也不能核验事实或检测作者身份。`WARN` 定位词句，`STRUCT` 定位加粗冒号段首、连续长列表项和连续短句；后两项使用数量或长度阈值辅助定位，不表示必须按阈值改稿。列表、字段、步骤和有意修辞应按用途保留。

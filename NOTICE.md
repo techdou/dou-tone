@@ -29,9 +29,11 @@ The incorporated changes emphasize natural particles and ordinary verbs, reader 
 
 ## Humanizer editing references
 
-`references/humanizer-lessons.md` adapts editing ideas from:
+`references/humanizer-lessons.md` and `references/humanizer-patterns.md` adapt editing ideas from:
 
 - [blader/humanizer](https://github.com/blader/humanizer), commit `225a6f39ac85f76ee48dbad772ea4abe4ed6c9d8`, MIT License, Copyright (c) 2025 Siqi Chen.
 - [op7418/Humanizer-zh](https://github.com/op7418/Humanizer-zh), commit `f4518a8eab97b8bfebc66a89d34320a89bef6930`, MIT License, Copyright (c) 2026 歸藏.
 
 The source copyright notices are retained in `LICENSE`, whose MIT permission and warranty terms also apply to these adaptations. Examples in the local reference are newly written for Chinese writing and preservation boundaries. The independently maintained dou-tone scope and output contract remain in effect.
+
+The October 4 expanded reference maps all 26 English and 31 Chinese pattern categories into 32 distinct contextual categories, retaining source numbering, preservation conditions and locally written examples. Corresponding patterns share one entry. The adaptation keeps Chinese punctuation, factual attribution, author voice, legitimate rhetoric and user scope, and does not import model/tool bindings or default draft-and-score output.
