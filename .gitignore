@@ -56,3 +56,17 @@ Thumbs.db
 desktop.ini
 *.tmp
 *~
+
+# ── 2026-10-27 统一范式补全（与 techdou 仓 .gitignore 标准对齐）──
+
+# ── 内部文档与开发状态：不入版本控制，避免泄漏 ──
+# README.md / CHANGELOG.md / SKILL.md / references/ / evals/ 是仓库正式内容，保持跟踪
+
+
+# ── Node 前端产物 ──
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+*.tsbuildinfo
