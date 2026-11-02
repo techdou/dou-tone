@@ -1,0 +1,170 @@
+[
+  {
+    "id": "r01",
+    "prompt": "按豆哥的文风润色这段论文摘要，保留全部引用。",
+    "expected_apply": true,
+    "expected_scene": "academic",
+    "category": "explicit-style"
+  },
+  {
+    "id": "r02",
+    "prompt": "把下面的知识点整理成学生能独立阅读的讲义。",
+    "expected_apply": true,
+    "expected_scene": "handout",
+    "category": "compose"
+  },
+  {
+    "id": "r03",
+    "prompt": "这段话有点生硬，帮我说得自然、正式一点。",
+    "expected_apply": true,
+    "expected_scene": "daily",
+    "category": "indirect"
+  },
+  {
+    "id": "r04",
+    "prompt": "审阅这份讲义的文风，只指出表达问题，别改文件。",
+    "expected_apply": true,
+    "expected_scene": "handout",
+    "category": "diagnose-only"
+  },
+  {
+    "id": "r05",
+    "prompt": "根据这些口述材料写一份正式通知。",
+    "expected_apply": true,
+    "expected_scene": "report",
+    "category": "compose"
+  },
+  {
+    "id": "r06",
+    "prompt": "把这段英文翻成中文并改成正式报告口吻。",
+    "expected_apply": true,
+    "expected_scene": "report",
+    "category": "mixed"
+  },
+  {
+    "id": "r07",
+    "prompt": "这段引言短句太多，重新组织，别新增论据。",
+    "expected_apply": true,
+    "expected_scene": "academic",
+    "category": "indirect"
+  },
+  {
+    "id": "r08",
+    "prompt": "帮我把 README 的部署说明写清楚，命令不变。",
+    "expected_apply": true,
+    "expected_scene": "project",
+    "category": "protected-content"
+  },
+  {
+    "id": "r09",
+    "prompt": "修复接口 bug，并润色 PR 描述。",
+    "expected_apply": true,
+    "expected_scene": "project",
+    "category": "mixed"
+  },
+  {
+    "id": "r10",
+    "prompt": "先解释论文，再把我下面的笔记整理成讨论班汇报稿。",
+    "expected_apply": true,
+    "expected_scene": "academic",
+    "category": "mixed"
+  },
+  {
+    "id": "r11",
+    "prompt": "做一份科研 PPT，基于这些数据撰写标题和页面文案。",
+    "expected_apply": true,
+    "expected_scene": "academic+ppt",
+    "category": "mixed-artifact"
+  },
+  {
+    "id": "r12",
+    "prompt": "讲义这几段不好懂，理顺解释顺序，不增加知识点。",
+    "expected_apply": true,
+    "expected_scene": "handout",
+    "category": "indirect"
+  },
+  {
+    "id": "r13",
+    "prompt": "解释一下 BatchNorm 的作用。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "concept-only"
+  },
+  {
+    "id": "r14",
+    "prompt": "找三篇遥感多标签论文。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "retrieval-only"
+  },
+  {
+    "id": "r15",
+    "prompt": "开题方案创新性不足，重新设计实验，不改文字。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "research-only"
+  },
+  {
+    "id": "r16",
+    "prompt": "只核对这段论文的引用和数据是否真实，不润色。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "verification-only"
+  },
+  {
+    "id": "r17",
+    "prompt": "把这段英文忠实翻译成中文，不改写。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "translation-only"
+  },
+  {
+    "id": "r18",
+    "prompt": "从这份论文提取方法和实验指标，方便我了解。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "extraction-only"
+  },
+  {
+    "id": "r19",
+    "prompt": "给这份 Word 设置首行缩进和页码，正文一个字都别动。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "layout-only"
+  },
+  {
+    "id": "r20",
+    "prompt": "制作讲义 PDF，只排版我提供的原文，不修改文字。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "layout-only"
+  },
+  {
+    "id": "r21",
+    "prompt": "review 这个 loss 的代码实现是否正确。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "code-only"
+  },
+  {
+    "id": "r22",
+    "prompt": "@Dou Tone 这个 skill 的匹配规则不清楚，帮我升级 skill。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "maintenance"
+  },
+  {
+    "id": "r23",
+    "prompt": "@Dou Tone 简单讲讲 AP 和 F1 的区别。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "explicit-nonwriting"
+  },
+  {
+    "id": "r24",
+    "prompt": "只审查讲义公式的推导是否正确，不改表达。",
+    "expected_apply": false,
+    "expected_scene": null,
+    "category": "verification-only"
+  }
+]
