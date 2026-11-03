@@ -37,3 +37,19 @@ The incorporated changes emphasize natural particles and ordinary verbs, reader 
 The source copyright notices are retained in `LICENSE`, whose MIT permission and warranty terms also apply to these adaptations. Examples in the local reference are newly written for Chinese writing and preservation boundaries. The independently maintained dou-tone scope and output contract remain in effect.
 
 The October 4 expanded reference maps all 26 English and 31 Chinese pattern categories into 32 distinct contextual categories, retaining source numbering, preservation conditions and locally written examples. Corresponding patterns share one entry. The adaptation keeps Chinese punctuation, factual attribution, author voice, legitimate rhetoric and user scope, and does not import model/tool bindings or default draft-and-score output.
+
+## Academic and student-handout revision
+
+The academic and student-handout revisions also draw on editorial principles from
+[Humanizer-zh](https://github.com/op7418/Humanizer-zh/blob/main/SKILL.md)
+(reviewed blob `ef07b54da21a41d4a7e4fe0b0afb928f597eb684`) and the current
+[oil-tone guide](https://github.com/oil-oil/oil-tone/blob/main/skills/oil-tone/SKILL.md)
+(reviewed blob `5d11418e466625d6ea4645753422f4e116cd340b`).
+The transferred ideas concern semantic preservation, audience knowledge order,
+connected prose, and context-sensitive checks. The academic/handout rules, examples and linter implementation introduced by
+this revision are independently written. Punctuation restrictions
+for editable handout prose reflect the user's explicit preferences; they are not
+claims about universal Chinese writing correctness or AI authorship.
+
+This fork is maintained in `douxl-lab/dou-tone`; the upstream provenance and
+copyright notices above remain applicable.

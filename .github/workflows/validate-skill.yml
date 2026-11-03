@@ -30,7 +30,10 @@ jobs:
         run: skills-ref validate "$PWD"
 
       - name: Compile Python scripts
-        run: python -m py_compile scripts/dou_lint.py
+        run: python -m py_compile scripts/dou_lint.py evals/check_routing.py
 
       - name: Run lint self-test
         run: python scripts/dou_lint.py --self-test
+
+      - name: Run routing scorer self-test
+        run: python evals/check_routing.py --self-test
